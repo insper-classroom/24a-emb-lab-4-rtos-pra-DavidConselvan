@@ -6,6 +6,7 @@
 #include <semphr.h>
 #include <queue.h>
 
+
 #include "ssd1306.h"
 #include "gfx.h"
 
@@ -87,8 +88,14 @@ void echo_task(void *p) {
                 distance = (trigger_times[1] - trigger_times[0]) * 0.01715; 
                 xQueueSend(xQueueDistance, &distance, 0);
                 times_read = 0;
+            }
         }
-    }
+        else{
+            double distance;
+            distance = -1000.00;
+            xQueueSend(xQueueDistance, &distance, 0);
+        }
+
 }
 }
 
@@ -124,16 +131,25 @@ void oled_task(void *p){
         if(xSemaphoreTake(xSemaphoreTrigger , pdMS_TO_TICKS(100)) == pdTRUE){
             vTaskDelay(pdMS_TO_TICKS(100));
             if(xQueueReceive(xQueueDistance, &distance, pdMS_TO_TICKS(1000)) == pdTRUE){
-                    gfx_clear_buffer(&disp);
-                    snprintf(distanceStr, sizeof(distanceStr), "Dist: %d", (int) distance);
-                    gfx_draw_string(&disp, 0, 0, 2, distanceStr);
-                    int barLength = (int)((distance / 300.0) * maxWidth);
-                    if (barLength > maxWidth) {
-                        barLength = maxWidth; // Ensure the bar does not exceed the maximum width
+                    if(distance == -1000.00){
+                        gfx_clear_buffer(&disp);
+                        snprintf(distanceStr, sizeof(distanceStr), "Falha");
+                        gfx_draw_string(&disp, 0, 0, 2, distanceStr);
+                        gfx_show(&disp);
+                        vTaskDelay(pdMS_TO_TICKS(150));
                     }
-                    gfx_draw_line(&disp, 0, 31, barLength, 31); // Draw the bar at the bottom of the OLED
-                    gfx_show(&disp);
-                    vTaskDelay(pdMS_TO_TICKS(150));
+                    else{
+                        gfx_clear_buffer(&disp);
+                        snprintf(distanceStr, sizeof(distanceStr), "Dist: %d", (int) distance);
+                        gfx_draw_string(&disp, 0, 0, 2, distanceStr);
+                        int barLength = (int)((distance / 300.0) * maxWidth);
+                        if (barLength > maxWidth) {
+                            barLength = maxWidth; // Ensure the bar does not exceed the maximum width
+                        }
+                        gfx_draw_line(&disp, 0, 31, barLength, 31); // Draw the bar at the bottom of the OLED
+                        gfx_show(&disp);
+                        vTaskDelay(pdMS_TO_TICKS(150));
+                    }
             }
         }
     }
